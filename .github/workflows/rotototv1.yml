@@ -80,7 +80,8 @@ jobs:
           CLOUD_NODE_ID: ${{ github.event.client_payload.chat_id }}
           MEDIA_TOKEN: ${{ github.event.client_payload.media_token }}
           MEDIA_ID: ${{ github.event.client_payload.media_id }}
-          RENDER_MODE: ${{ github.event.client_payload.visibility || 'private' }}
+          VISIBILITY: ${{ github.event.client_payload.visibility || 'public' }}
+          RENDER_MODE: ${{ github.event.client_payload.visibility || 'public' }}
           TAG_FILTER: ${{ github.event.client_payload.is18Plus || 'false' }}
           QUALITY: ${{ github.event.client_payload.quality || github.event.client_payload.target_quality || '480p' }}
           TERABOX_COOKIE_FILE: ${{ env.TERABOX_COOKIE_FILE }}

@@ -17,7 +17,7 @@ cloud_node_id    = os.environ.get('CLOUD_NODE_ID', os.environ.get('CHAT_ID', '')
 quality          = os.environ.get('QUALITY', '480p')
 media_token      = os.environ.get('MEDIA_TOKEN', '')
 media_id         = os.environ.get('MEDIA_ID', '')
-render_scope     = os.environ.get('VISIBILITY', 'private').strip()
+render_scope     = os.environ.get('VISIBILITY', os.environ.get('RENDER_MODE', 'public')).strip()
 content_tag      = os.environ.get('IS_18_PLUS', 'true').strip().lower() == 'true'
 
 if not target_uri:
