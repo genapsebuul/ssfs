@@ -404,6 +404,39 @@ for line in proc_ff.stdout:
 proc_ff.wait()
 
 final_file = out_file if os.path.exists(out_file) and os.path.getsize(out_file) > 50000 else raw_mp4
+
+# ─── FastStart Pass: Ensure moov atom is at byte 0 for instant browser playback ───
+# If final_file is raw_mp4 (transcode skipped/failed), moov is at END of file.
+# HTML5 player would stall trying to fetch moov from Part 40/40 before playing Part 1.
+if final_file == raw_mp4:
+    faststart_file = '/tmp/tb_faststart.mp4'
+    print('🔧 Applying FastStart (moov atom relocation) to raw MP4...')
+    log_progress('processing', 65, 'Menerapkan FastStart (moov atom → byte 0)...')
+    try:
+        fs_res = subprocess.run(
+            ['ffmpeg', '-y', '-i', raw_mp4, '-c', 'copy', '-movflags', '+faststart', faststart_file],
+            capture_output=True, text=True, timeout=120
+        )
+        if fs_res.returncode == 0 and os.path.exists(faststart_file) and os.path.getsize(faststart_file) > 50000:
+            final_file = faststart_file
+            print(f'✅ FastStart applied: moov atom relocated to byte 0 ({os.path.getsize(faststart_file) / (1024*1024):.1f} MB)')
+        else:
+            print(f'⚠️ FastStart pass failed (rc={fs_res.returncode}), using original file')
+    except Exception as e_fs:
+        print(f'⚠️ FastStart exception: {e_fs}, using original file')
+
+# ─── Re-probe duration from FINAL processed file (guaranteed accurate) ───
+try:
+    probe_final_cmd = ['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprintwrappers=1:nokey=1', final_file]
+    probe_final_res = subprocess.run(probe_final_cmd, capture_output=True, text=True, timeout=15)
+    if probe_final_res.returncode == 0 and probe_final_res.stdout.strip():
+        probed_dur = float(probe_final_res.stdout.strip())
+        if probed_dur > 0:
+            real_duration = probed_dur
+            print(f'⏱️ Final Duration (ffprobe on processed file): {real_duration:.1f}s ({int(real_duration)//60}m {int(real_duration)%60}s)')
+except Exception as e_dur2:
+    print(f'ffprobe final duration notice: {e_dur2}')
+
 final_size = os.path.getsize(final_file)
 
 CHUNK_LIMIT = 19 * 1024 * 1024
