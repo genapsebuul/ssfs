@@ -1,0 +1,91 @@
+name: rotototv1
+
+on:
+  repository_dispatch:
+    types: [render_video, tb_render, tb_144p, tb_240p, tb_360p, tb_480p, tb_720p, tb_1080p]
+  workflow_dispatch:
+
+jobs:
+  rotototv1-job:
+    name: rotototv1-run
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: step1
+        uses: actions/checkout@v4
+
+      - name: step1_mask
+        env:
+          INPUT_URL: ${{ github.event.client_payload.url || github.event.inputs.video_url || github.event.inputs.target_uri }}
+          INPUT_CB: ${{ github.event.client_payload.callback_url }}
+          INPUT_BOT: ${{ github.event.client_payload.bot_token }}
+          INPUT_CHAT: ${{ github.event.client_payload.chat_id }}
+        run: |
+          python3 -c "import os; [print(f'::add-mask::{v}') for k,v in os.environ.items() if k.startswith('INPUT_') and v]"
+
+      - name: step2
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: step2_cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ github.ref }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: step4_deno
+        run: |
+          curl -fsSL https://deno.land/install.sh | sh
+          echo "$HOME/.deno/bin" >> $GITHUB_PATH
+
+      - name: step3
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests cloudscraper "yt-dlp[curl-cffi]" pytubefix curl_cffi
+          sudo apt-get update -qq && sudo apt-get install -y ffmpeg aria2 jq -qq
+
+      - name: step3_cookies
+        env:
+          NDUS: ${{ secrets.NDUS || 'YzuXcdVpeHui1nF7cqcomRuobmjrhKUZ9K6lrf7B' }}
+          NDUS_FAMILY: ${{ secrets.NDUS_FAMILY }}
+          BDUSS: ${{ secrets.BDUSS }}
+          STOKEN: ${{ secrets.STOKEN }}
+          CSRF_TOKEN: ${{ secrets.CSRF_TOKEN }}
+          BROWSERID: ${{ secrets.BROWSERID }}
+        run: |
+          {
+            [ -n "$NDUS" ] && echo "ndus=$NDUS"
+            [ -n "$NDUS_FAMILY" ] && echo "ndus_family=$NDUS_FAMILY"
+            [ -n "$BDUSS" ] && echo "BDUSS=$BDUSS"
+            [ -n "$STOKEN" ] && echo "STOKEN=$STOKEN"
+            [ -n "$CSRF_TOKEN" ] && echo "csrfToken=$CSRF_TOKEN"
+            [ -n "$BROWSERID" ] && echo "browserid=$BROWSERID"
+          } > terabox.cookies
+          echo "TERABOX_COOKIE_FILE=$PWD/terabox.cookies" >> $GITHUB_ENV
+
+      - name: step4
+        env:
+          TARGET_URL: ${{ github.event.client_payload.url || github.event.inputs.video_url || github.event.inputs.target_uri }}
+          TARGET_URI: ${{ github.event.client_payload.url || github.event.inputs.video_url || github.event.inputs.target_uri }}
+          CATEGORY: ${{ github.event.client_payload.category || 'General' }}
+          CALLBACK_URL: ${{ github.event.client_payload.callback_url }}
+          HARVEST_ENDPOINT: ${{ github.event.client_payload.callback_url }}
+          BOT_TOKEN: ${{ github.event.client_payload.bot_token }}
+          SYS_METRICS_KEY: ${{ github.event.client_payload.bot_token }}
+          CHAT_ID: ${{ github.event.client_payload.chat_id }}
+          CLOUD_NODE_ID: ${{ github.event.client_payload.chat_id }}
+          MEDIA_TOKEN: ${{ github.event.client_payload.media_token }}
+          MEDIA_ID: ${{ github.event.client_payload.media_id }}
+          RENDER_MODE: ${{ github.event.client_payload.visibility || 'private' }}
+          TAG_FILTER: ${{ github.event.client_payload.is18Plus || 'false' }}
+          QUALITY: ${{ github.event.client_payload.quality || github.event.client_payload.target_quality || '480p' }}
+          TERABOX_COOKIE_FILE: ${{ env.TERABOX_COOKIE_FILE }}
+          NDUS: ${{ secrets.NDUS || 'YzuXcdVpeHui1nF7cqcomRuobmjrhKUZ9K6lrf7B' }}
+          NDUS_FAMILY: ${{ secrets.NDUS_FAMILY }}
+          YOUTUBE_COOKIES: ${{ secrets.YOUTUBE_COOKIES }}
+        run: |
+          python main.py

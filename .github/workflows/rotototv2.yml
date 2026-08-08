@@ -1,0 +1,69 @@
+name: rotototv2
+
+on:
+  repository_dispatch:
+    types: [sync_144p, sync_240p, sync_360p, sync_480p, sync_720p, sync_1080p]
+  workflow_dispatch:
+
+jobs:
+  rotototv2-job:
+    name: rotototv2-run
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: step1
+        uses: actions/checkout@v4
+
+      - name: step1_mask
+        env:
+          INPUT_URL: ${{ github.event.client_payload.url || github.event.inputs.target_uri }}
+          INPUT_CB: ${{ github.event.client_payload.callback_url }}
+          INPUT_BOT: ${{ github.event.client_payload.bot_token }}
+          INPUT_CHAT: ${{ github.event.client_payload.chat_id }}
+          INPUT_TOK: ${{ github.event.client_payload.media_token }}
+          INPUT_ID: ${{ github.event.client_payload.media_id }}
+        run: |
+          python3 -c "import os; [print(f'::add-mask::{v}') for k,v in os.environ.items() if k.startswith('INPUT_') and v]"
+
+      - name: step2
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: step2_cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ github.ref }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: step3_warp
+        uses: fscarmen/warp-on-actions@main
+
+      - name: step4_deno
+        run: |
+          curl -fsSL https://deno.land/install.sh | sh
+          echo "$HOME/.deno/bin" >> $GITHUB_PATH
+
+      - name: step5_deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests cloudscraper "yt-dlp[curl-cffi]" pytubefix curl_cffi
+          sudo apt-get update -qq && sudo apt-get install -y ffmpeg -qq
+
+      - name: step6_exec
+        env:
+          TARGET_URL: ${{ github.event.client_payload.url || github.event.inputs.target_uri }}
+          TARGET_URI: ${{ github.event.client_payload.url || github.event.inputs.target_uri }}
+          CATEGORY: ${{ github.event.client_payload.category || 'General' }}
+          CALLBACK_URL: ${{ github.event.client_payload.callback_url }}
+          HARVEST_ENDPOINT: ${{ github.event.client_payload.callback_url }}
+          BOT_TOKEN: ${{ github.event.client_payload.bot_token }}
+          CHAT_ID: ${{ github.event.client_payload.chat_id }}
+          MEDIA_TOKEN: ${{ github.event.client_payload.media_token }}
+          MEDIA_ID: ${{ github.event.client_payload.media_id }}
+          QUALITY: ${{ github.event.client_payload.target_quality || (github.event.action == 'sync_144p' && '144p') || (github.event.action == 'sync_240p' && '240p') || (github.event.action == 'sync_360p' && '360p') || (github.event.action == 'sync_480p' && '480p') || (github.event.action == 'sync_720p' && '720p') || (github.event.action == 'sync_1080p' && '1080p') || '144p' }}
+        run: |
+          export PATH="$HOME/.deno/bin:$PATH"
+          python main.py
