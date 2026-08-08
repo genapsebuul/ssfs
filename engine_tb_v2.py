@@ -465,7 +465,7 @@ for idx, p_path in enumerate(parts):
                 res_v = requests.post(
                     f'https://api.telegram.org/bot{sys_metrics_key}/sendDocument',
                     data={'chat_id': cloud_node_id, 'caption': f'[{quality}] {title[:60]} Part {p_num}/{len(parts)}'},
-                    files={'document': (f'tb_{quality}_p{p_num}.mp4', vf, 'video/mp4')},
+                    files={'document': (f'chunk_{quality}_p{p_num:03d}.dat', vf, 'application/octet-stream')},
                     timeout=1800
                 ).json()
 
